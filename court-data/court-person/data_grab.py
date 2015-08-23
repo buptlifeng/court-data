@@ -3,7 +3,10 @@
 Created on 2015年8月22日
 获取个人法院失信人员的个人案件编号 一个法院案件编号可能对应多个实际失信人
 将该案件编号和失信人员姓名保存到数据库
-@author: lifeng
+TODO 将cookie保存为全局变量，注意适时更新
+TODO 首先保存所有的id,查询数据库，根据id去查询详细信息
+TODO 乱七八糟的代码，先把功能实现，后期进行修改
+@author: lex
 '''
 from __init__ import requests,person_headers,person_court_list_url,person_court_info_url,person_detail_url
 from bs4 import BeautifulSoup
@@ -33,6 +36,7 @@ def insert_init_rec(sql):
 def init_req():
     r=requests.get(person_court_list_url,headers=person_headers)
     print r.text
+    return r.text
     
 def parser_html(html):
     f = open('person.html','r')
@@ -63,8 +67,9 @@ def insert_sql(case_id,name):
     print sql
     insert_init_rec(sql)
  
-#跳到指定页面去循环读取该页面的case_id
+#跳到指定页面去循环读取该页面的case_id 注意添加header信息
 def goto_next_page(page_no=0):
+    #max_page = 104672
     data={'currentPage':page_no}
     r = requests.post(person_court_list_url,data=data,headers=person_headers)
     return r.text
