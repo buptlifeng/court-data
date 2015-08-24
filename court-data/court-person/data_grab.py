@@ -11,40 +11,43 @@ TODO 一个线程专门抓取case_id，一个用来读取个人失信信息
 '''
 from __init__ import *
 from bs4 import BeautifulSoup
+import requests
 import sqlite3  
 
-def init():
+
+def fetch_db_con(con):
     if con is None:
         con = sqlite3.connect('person.db')
-    if len(cookies) == 0:
-        r=requests.get(court_main_url,headers=person_headers)
-        cookies = r.cookies
+        return con
 
 def select_rec_by_id(case_id):
     sql='''
-    select id from person_court_info
-    where id='%s'
+    select case_id from person_court_info
+    where case_id='%s'
     '''%(case_id)
     print sql
-    #con = sqlite3.connect('person.db')
+    con = sqlite3.connect('person.db')
+    if con is None:
+        con = sqlite3.connect('person.db')    
     cur = con.cursor()
     cur.execute(sql)
     count = len(cur.fetchall())
     print 'db has record case_id:%s,count:%d'%(case_id,count)
     cur.close()
-    #con.close()
+    con.close()
     return count
 
 def insert_init_rec(sql):
-    #con = sqlite3.connect('person.db')
+    con = sqlite3.connect('person.db')
     con.execute(sql)
     con.commit()
-    #con.close()
+    con.close()
     
 def parser_html(html):
-    f = open('person.html','r')
-    content=f.read()
-    soup=BeautifulSoup(content,'lxml')
+    #f = open('person.html','r')
+    #content=f.read()
+    #soup=BeautifulSoup(content,'lxml')
+    soup=BeautifulSoup(html,'lxml')
     table = soup.find('table',id='Resultlist')
     if table is not None:
         rows = table.find_all('tr')
@@ -60,18 +63,19 @@ def parser_html(html):
                     if select_rec_by_id(case_id) == 0:
                         insert_sql(case_id, name)
 
+
 def insert_sql(case_id,name):
     if case_id is None or name is None:
         raise 'case_id or name cannot be None'
     sql='''
-    insert into person_court_info(id_index,name)
+    insert into person_court_info(case_id,iname)
     values('%s','%s')
     '''%(case_id,name)
     print sql
     insert_init_rec(sql)
  
 #跳到指定页面去循环读取该页面的case_id 注意添加header信息
-def goto_next_page(r,page_no=1):
+def goto_specify_page(r,page_no=1):
     #max_page = 104672 #104672 共1570071条
     data={'currentPage':page_no}
     
@@ -84,7 +88,8 @@ def goto_next_page(r,page_no=1):
                    }    
     
     r = requests.post(person_court_list_url,data=data,headers=person_headers,cookies=cookies)
-    return r.text
+    print r
+    parser_html(r.text)
 
 #根据id查询个人法院失信信息 验证通过，注意通过首页拿到cookie
 def get_person_court_info(id):
@@ -92,8 +97,8 @@ def get_person_court_info(id):
         return
     person_url = person_detail_url+id
     
-    url='http://shixin.court.gov.cn/personMore.do'
-    r = requests.get(url,headers=person_headers)
+    person_referer_page='http://shixin.court.gov.cn/personMore.do'
+    r = requests.get(person_referer_page,headers=person_headers)
     cookies=r.cookies
     
     headers = {
@@ -104,15 +109,12 @@ def get_person_court_info(id):
                'Referer':'http://shixin.court.gov.cn/personMore.do'
                }
     
-    
-    
     return requests.get(person_url,headers=headers,cookies = cookies).text
 
 if __name__=='__main__':
-    
-    url='http://shixin.court.gov.cn/'
-    r = requests.get(url,headers=person_headers)  
-    print goto_next_page(r,2)
+    #init()
+    r = requests.get(court_main_url,headers=person_headers)  
+    goto_specify_page(r,2)
     
     #init_req()
     #parser_html('')
@@ -120,6 +122,5 @@ if __name__=='__main__':
     #r=get_person_court_info('1818535')
     #print r
     
-    init()
-    
+    #init()
     
