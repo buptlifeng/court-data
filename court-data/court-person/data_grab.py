@@ -6,11 +6,19 @@ Created on 2015年8月22日
 TODO 将cookie保存为全局变量，注意适时更新
 TODO 首先保存所有的id,查询数据库，根据id去查询详细信息
 TODO 乱七八糟的代码，先把功能实现，后期进行修改
+TODO 一个线程专门抓取case_id，一个用来读取个人失信信息
 @author: lex
 '''
-from __init__ import requests,person_headers,person_court_list_url,person_court_info_url,person_detail_url
+from __init__ import *
 from bs4 import BeautifulSoup
-import sqlite3
+import sqlite3  
+
+def init():
+    if con is None:
+        con = sqlite3.connect('person.db')
+    if len(cookies) == 0:
+        r=requests.get(court_main_url,headers=person_headers)
+        cookies = r.cookies
 
 def select_rec_by_id(case_id):
     sql='''
@@ -18,25 +26,20 @@ def select_rec_by_id(case_id):
     where id='%s'
     '''%(case_id)
     print sql
-    con = sqlite3.connect('person.db')
+    #con = sqlite3.connect('person.db')
     cur = con.cursor()
     cur.execute(sql)
     count = len(cur.fetchall())
-    print count
+    print 'db has record case_id:%s,count:%d'%(case_id,count)
     cur.close()
-    con.close()
+    #con.close()
     return count
 
 def insert_init_rec(sql):
-    con = sqlite3.connect('person.db')
+    #con = sqlite3.connect('person.db')
     con.execute(sql)
     con.commit()
-    con.close()
-
-def init_req():
-    r=requests.get(person_court_list_url,headers=person_headers)
-    print r.text
-    return r.text
+    #con.close()
     
 def parser_html(html):
     f = open('person.html','r')
@@ -68,10 +71,19 @@ def insert_sql(case_id,name):
     insert_init_rec(sql)
  
 #跳到指定页面去循环读取该页面的case_id 注意添加header信息
-def goto_next_page(page_no=0):
-    #max_page = 104672
+def goto_next_page(r,page_no=1):
+    #max_page = 104672 #104672 共1570071条
     data={'currentPage':page_no}
-    r = requests.post(person_court_list_url,data=data,headers=person_headers)
+    
+    headers = {
+                   'Accept-Encoding':'gzip, deflate',
+                   'Accept-Language':'zh-CN,zh;q=0.8',
+                   'Origin':'http://shixin.court.gov.cn',
+                   'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36',
+                   'Referer':'http://shixin.court.gov.cn/personMore.do'
+                   }    
+    
+    r = requests.post(person_court_list_url,data=data,headers=person_headers,cookies=cookies)
     return r.text
 
 #根据id查询个人法院失信信息 验证通过，注意通过首页拿到cookie
@@ -97,9 +109,17 @@ def get_person_court_info(id):
     return requests.get(person_url,headers=headers,cookies = cookies).text
 
 if __name__=='__main__':
+    
+    url='http://shixin.court.gov.cn/'
+    r = requests.get(url,headers=person_headers)  
+    print goto_next_page(r,2)
+    
     #init_req()
     #parser_html('')
     
-    r=get_person_court_info('1818535')
-    print r
+    #r=get_person_court_info('1818535')
+    #print r
+    
+    init()
+    
     

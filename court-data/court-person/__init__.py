@@ -1,6 +1,8 @@
 #coding=utf8
 
-import requests
+import requests,Queue
+
+court_main_url='http://shixin.court.gov.cn/'
 
 person_court_list_url='http://shixin.court.gov.cn/personMore.do'
 
@@ -22,3 +24,7 @@ unit_headers={'User-Agent':'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; W
          'Accept-Language':'zh-CN,zh;q=0.8',
          'Referer':unit_referer_page
          }
+
+cookies={}
+
+con = None

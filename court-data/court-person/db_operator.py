@@ -2,7 +2,7 @@
 '''
 Created on 2015-8-23
 
-@author: lifeng
+@author: lex
 '''
 
 import sqlite3
