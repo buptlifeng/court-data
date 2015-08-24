@@ -95,12 +95,77 @@ create table person_court_info(
     conn.execute(create_tb)
     conn.commit()
     db_conn_close(conn)
+    
+def test_select():
+    sql='''
+    select * from test_tb
+    '''
+    conn = sqlite3.Connection("person.db")
+    cur = conn.cursor()
+    cur.execute(sql)
+    records = cur.fetchall()
+    print records
+    cur.close()
+    conn.close()
+    return records
+
+def test_insert():
+    sql='''
+    insert into test_tb(name,age,sex)
+    values
+    ('%s','%s','%s')
+    '''%('zxy','25','female')
+    print sql
+    conn = sqlite3.Connection("person.db")
+    cur = conn.cursor()
+    cur.execute(sql)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def test_init_table():
+    sql='''
+    create table test_tb(
+    id integer primary key autoincrement,
+    name text,
+    age text,
+    sex text
+    );
+    '''
+    conn = sqlite3.Connection("person.db")
+    cur = conn.cursor()
+    cur.execute(sql)
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+def test_update():
+    sql='''
+    update test_tb set age='18' where name='lex'
+    '''
+    conn = sqlite3.Connection("person.db")
+    cur = conn.cursor()
+    cur.execute(sql)
+    conn.commit()
+    cur.close()
+    conn.close()
         
 if __name__ == '__main__':
     
+    #test_init_table()
     
+    #test_insert()
     
-    init_person_court('')
+    rec = test_select()
+    for row in rec:
+        #print type(row)
+        print 'name=',row[1],' age=',row[2],' sex=',row[3]
+    
+    #test_update()
+    
+    #test_select()
+    
+    #init_person_court('')
     
     '''
     conn = db_conn()

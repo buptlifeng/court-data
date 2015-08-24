@@ -3,22 +3,14 @@
 Created on 2015年8月22日
 获取个人法院失信人员的个人案件编号 一个法院案件编号可能对应多个实际失信人
 将该案件编号和失信人员姓名保存到数据库
-TODO 将cookie保存为全局变量，注意适时更新
-TODO 首先保存所有的id,查询数据库，根据id去查询详细信息
-TODO 乱七八糟的代码，先把功能实现，后期进行修改
-TODO 一个线程专门抓取case_id，一个用来读取个人失信信息
+从数据库提前读取记录到队列，提供case_id,频繁关闭db连接,bad
 @author: lex
 '''
 from __init__ import *
 from bs4 import BeautifulSoup
 import requests
 import sqlite3  
-
-
-def fetch_db_con(con):
-    if con is None:
-        con = sqlite3.connect('person.db')
-        return con
+import json
 
 def select_rec_by_id(case_id):
     sql='''
@@ -28,20 +20,43 @@ def select_rec_by_id(case_id):
     print sql
     con = sqlite3.connect('person.db')
     if con is None:
-        con = sqlite3.connect('person.db')    
+        raise 'db conn is none' 
     cur = con.cursor()
     cur.execute(sql)
     count = len(cur.fetchall())
-    print 'db has record case_id:%s,count:%d'%(case_id,count)
     cur.close()
     con.close()
     return count
 
-def insert_init_rec(sql):
+def execute_sql(sql):
     con = sqlite3.connect('person.db')
     con.execute(sql)
     con.commit()
     con.close()
+    
+def insert_sql(case_id,name):
+    if case_id is None or name is None:
+        raise 'case_id or name cannot be None'
+    sql='''
+    insert into person_court_info(case_id,iname)
+    values('%s','%s')
+    '''%(case_id,name)
+    print sql
+    execute_sql(sql)
+    
+def update_person_info(params):
+    sql='''
+    update person_court_info set sexy='%s',age=%d,cardNum='%s',
+    courtName='%s',areaName='%s',gistId='%s',regDate='%s',
+    caseCode='%s',gistUnit='%s',duty='%s',performance='%s',
+    performedPart='%s',unperformPart='%s',disruptTypeName='%s',
+    publishDate='%s',partyTypeName='%s'
+    '''%(params['sexy'],params['age'],params['cardNum'],
+         params['courtName'],params['areaName'],params['gistId'],params['regDate'],
+         params['caseCode'],params['gistUnit'],params['duty'],params['performance'],
+         params['performedPart'],params['unperformPart'],params['disruptTypeName'],
+         params['publishDate'],partyTypeName['sexy'])
+    execute_sql(sql)
     
 def parser_html(html):
     #f = open('person.html','r')
@@ -62,17 +77,6 @@ def parser_html(html):
                     name=td_a['title']
                     if select_rec_by_id(case_id) == 0:
                         insert_sql(case_id, name)
-
-
-def insert_sql(case_id,name):
-    if case_id is None or name is None:
-        raise 'case_id or name cannot be None'
-    sql='''
-    insert into person_court_info(case_id,iname)
-    values('%s','%s')
-    '''%(case_id,name)
-    print sql
-    insert_init_rec(sql)
  
 #跳到指定页面去循环读取该页面的case_id 注意添加header信息
 def goto_specify_page(r,page_no=1):
@@ -88,7 +92,7 @@ def goto_specify_page(r,page_no=1):
                    }    
     
     r = requests.post(person_court_list_url,data=data,headers=person_headers,cookies=cookies)
-    print r
+    print r.status_code
     parser_html(r.text)
 
 #根据id查询个人法院失信信息 验证通过，注意通过首页拿到cookie
@@ -109,12 +113,19 @@ def get_person_court_info(id):
                'Referer':'http://shixin.court.gov.cn/personMore.do'
                }
     
-    return requests.get(person_url,headers=headers,cookies = cookies).text
+    r = requests.get(person_url,headers=headers,cookies = cookies)
+    if r.status_code == '200':
+        text = r.text
+        content = json.loads(text)
+        print r,content
+        
 
 if __name__=='__main__':
     #init()
-    r = requests.get(court_main_url,headers=person_headers)  
-    goto_specify_page(r,2)
+    #r = requests.get(court_main_url,headers=person_headers)  
+    #goto_specify_page(r,2)
+    
+    get_person_court_info('2281273')
     
     #init_req()
     #parser_html('')
