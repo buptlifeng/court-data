@@ -10,7 +10,7 @@ from __init__ import *
 from bs4 import BeautifulSoup
 import requests
 import sqlite3  
-import json
+import json,string
 
 def select_rec_by_id(case_id):
     sql='''
@@ -51,11 +51,11 @@ def update_person_info(params):
     caseCode='%s',gistUnit='%s',duty='%s',performance='%s',
     performedPart='%s',unperformPart='%s',disruptTypeName='%s',
     publishDate='%s',partyTypeName='%s'
-    '''%(params['sexy'],params['age'],params['cardNum'],
-         params['courtName'],params['areaName'],params['gistId'],params['regDate'],
-         params['caseCode'],params['gistUnit'],params['duty'],params['performance'],
-         params['performedPart'],params['unperformPart'],params['disruptTypeName'],
-         params['publishDate'],partyTypeName['sexy'])
+    '''%(params.get('sexy'),params.get('age'),params.get('cardNum'),
+         params.get('courtName'),params.get('areaName'),params.get('gistId'),params.get('regDate'),
+         params.get('caseCode'),params.get('gistUnit'),params.get('duty'),params.get('performance'),
+         params.get('performedPart'),params.get('unperformPart'),params.get('disruptTypeName'),
+         params.get('publishDate'),partyTypeName.get('sexy'))
     execute_sql(sql)
     
 def parser_html(html):
@@ -100,6 +100,7 @@ def get_person_court_info(id):
     if id is None:
         return
     person_url = person_detail_url+id
+    print person_url
     
     person_referer_page='http://shixin.court.gov.cn/personMore.do'
     r = requests.get(person_referer_page,headers=person_headers)
@@ -114,10 +115,13 @@ def get_person_court_info(id):
                }
     
     r = requests.get(person_url,headers=headers,cookies = cookies)
-    if r.status_code == '200':
+    if r.status_code == requests.codes.ok:
         text = r.text
+        print text,type(text)
+        text = text.encode('utf8')
+        text = text.translate(string.maketrans('\n\r\t','   '))
         content = json.loads(text)
-        print r,content
+        print content,content.get('duty'),content.get('name')
         
 
 if __name__=='__main__':
@@ -125,7 +129,7 @@ if __name__=='__main__':
     #r = requests.get(court_main_url,headers=person_headers)  
     #goto_specify_page(r,2)
     
-    get_person_court_info('2281273')
+    get_person_court_info('1617772')
     
     #init_req()
     #parser_html('')
