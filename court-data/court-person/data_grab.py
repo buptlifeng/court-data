@@ -48,12 +48,12 @@ def insert_sql(case_id, name):
     
 def update_person_info(params):
     sql = '''
-    update person_court_info set sexy='%s',age=%d,cardNum='%s',
+    update person_court_info set iname="%s" sexy='%s',age=%d,cardNum='%s',
     courtName='%s',areaName='%s',gistId='%s',regDate='%s',
     caseCode='%s',gistUnit='%s',duty='%s',performance='%s',
     performedPart='%s',unperformPart='%s',disruptTypeName='%s',
     publishDate='%s',partyTypeName='%s' where case_id='%s'
-    ''' % (params.get('sexy'), params.get('age'), params.get('cardNum'),
+    ''' % (params.get('iname'),params.get('sexy'), params.get('age'), params.get('cardNum'),
          params.get('courtName'), params.get('areaName'), params.get('gistId'), params.get('regDate'),
          params.get('caseCode'), params.get('gistUnit'), params.get('duty'), params.get('performance'),
          params.get('performedPart'), params.get('unperformPart'), params.get('disruptTypeName'),
