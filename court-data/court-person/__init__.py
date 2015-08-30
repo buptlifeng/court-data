@@ -1,6 +1,10 @@
 #coding=utf8
 
 import requests,Queue
+import logging,os
+
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",filename=os.path.join(os.getcwd(),'log.txt'),level=logging.DEBUG)
+log = logging.getLogger('court-perInfo')   #Logger对象
 
 court_main_url='http://shixin.court.gov.cn/'
 

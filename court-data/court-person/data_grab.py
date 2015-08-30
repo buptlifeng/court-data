@@ -10,7 +10,8 @@ from __init__ import *
 from bs4 import BeautifulSoup
 import requests
 import sqlite3  
-import json, string
+import os,json, string
+import thread,time,logging
 
 def select_rec_by_id(case_id):
     sql = '''
@@ -28,6 +29,22 @@ def select_rec_by_id(case_id):
     con.close()
     return count
 
+def select_recs_new():
+    sql='''
+    select case_id from person_court_info
+    where duty is null limit 20
+    '''
+    con = sqlite3.connect('person.db')
+    if con is None:
+        raise 'db conn is none' 
+    cur = con.cursor()
+    cur.execute(sql)
+    l = cur.fetchall()
+    cur.close()
+    con.close()
+    return l
+
+
 def execute_sql(sql):
     con = sqlite3.connect('person.db')
     cur = con.cursor()
@@ -43,12 +60,15 @@ def insert_sql(case_id, name):
     insert into person_court_info(case_id,iname)
     values('%s','%s')
     ''' % (case_id, name)
-    print sql
+    log.debug(sql)
     execute_sql(sql)
     
 def update_person_info(params):
+    if params is None or params.get('case_id') is None:
+        #logger print params
+        return
     sql = '''
-    update person_court_info set iname="%s" sexy='%s',age=%d,cardNum='%s',
+    update person_court_info set iname="%s",sexy='%s',age=%d,cardNum='%s',
     courtName='%s',areaName='%s',gistId='%s',regDate='%s',
     caseCode='%s',gistUnit='%s',duty='%s',performance='%s',
     performedPart='%s',unperformPart='%s',disruptTypeName='%s',
@@ -58,13 +78,10 @@ def update_person_info(params):
          params.get('caseCode'), params.get('gistUnit'), params.get('duty'), params.get('performance'),
          params.get('performedPart'), params.get('unperformPart'), params.get('disruptTypeName'),
          params.get('publishDate'), params.get('partyTypeName'), params.get('case_id'))
-    print sql, type(sql)
+    log.debug(sql)
     execute_sql(sql)
     
 def parser_html(html):
-    # f = open('person.html','r')
-    # content=f.read()
-    # soup=BeautifulSoup(content,'lxml')
     soup = BeautifulSoup(html, 'lxml')
     table = soup.find('table', id='Resultlist')
     if table is not None:
@@ -82,7 +99,7 @@ def parser_html(html):
                         insert_sql(case_id, name)
  
 # 跳到指定页面去循环读取该页面的case_id 注意添加header信息
-def goto_specify_page(r, page_no=1):
+def goto_specify_page(cookies, page_no=1):
     # max_page = 104672 #104672 共1570071条
     data = {'currentPage':page_no}
     
@@ -95,19 +112,15 @@ def goto_specify_page(r, page_no=1):
                    }    
     
     r = requests.post(person_court_list_url, data=data, headers=person_headers, cookies=cookies)
-    print r.status_code
+    #print r.status_code
     parser_html(r.text)
 
 # 根据id查询个人法院失信信息 验证通过，注意通过首页拿到cookie
-def get_person_court_info(id):
+def get_person_court_info(id,cookies):
     if id is None:
         return
     person_url = person_detail_url + id
-    print person_url
-    
-    person_referer_page = 'http://shixin.court.gov.cn/personMore.do'
-    r = requests.get(person_referer_page, headers=person_headers)
-    cookies = r.cookies
+    log.debug(person_url)
     
     headers = {
                'Accept-Encoding':'gzip, deflate,sdch',
@@ -119,26 +132,42 @@ def get_person_court_info(id):
     
     r = requests.get(person_url, headers=headers, cookies=cookies)
     if r.status_code == requests.codes.ok:
-        text = r.text
-        # print text,type(text)
-        text = text.encode('utf8')
+        text = r.text.encode('utf8')
         text = text.translate(string.maketrans('\n\r\t', '   '))
         content = json.loads(text)
         print content, content.get('duty'), type(content.get('duty'))
         content['case_id'] = id
+        log.debug(content)
         update_person_info(content)
 
+#query person court info using case_id from db
+def qry_person_court_info_thd():
+    person_referer_page = 'http://shixin.court.gov.cn/personMore.do'
+    r = requests.get(person_referer_page, headers=person_headers)
+    cookies = r.cookies
+    while True:
+        l=select_recs_new()
+        log.debug(l)
+        if len(l) < 1:
+            time.sleep(3)
+        else:
+            for line in l:
+                case_id = line[0]
+                get_person_court_info(case_id,cookies)
+
+
+def qry_person_list_thd(max_page=40426):
+    #var totalPage = 40426;
+    person_referer_page = 'http://shixin.court.gov.cn/personMore.do'
+    r = requests.get(person_referer_page, headers=person_headers)
+    cookies = r.cookies
+    cur_page = 1
+    while cur_page < max_page:
+        goto_specify_page(cookies,cur_page)
+        
+        cur_page = cur_page + 1
+
 if __name__ == '__main__':
-    # init()
-    # r = requests.get(court_main_url,headers=person_headers)  
-    # goto_specify_page(r,2)
+    thread.start_new_thread(qry_person_list_thd,40426)
     
-    get_person_court_info('1617772')
-    
-    # init_req()
-    # parser_html('')
-    
-    # r=get_person_court_info('1818535')
-    # print r
-    
-    # init()
+    thread.start_new_thread(qry_person_court_info_thd)
