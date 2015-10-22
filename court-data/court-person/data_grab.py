@@ -8,10 +8,13 @@ Created on 2015年8月22日
 '''
 from __init__ import *
 from bs4 import BeautifulSoup
+from time import sleep,ctime
+
 import requests
 import sqlite3  
 import os,json, string
-import thread,time,logging
+import threading,logging
+
 
 def select_rec_by_id(case_id):
     sql = '''
@@ -167,7 +170,13 @@ def qry_person_list_thd(max_page=40426):
         
         cur_page = cur_page + 1
 
+
 if __name__ == '__main__':
-    thread.start_new_thread(qry_person_list_thd,40426)
-    
-    thread.start_new_thread(qry_person_court_info_thd)
+    print 'start'
+    t1 = threading.Thread(target=qry_person_list_thd)
+    t2 = threading.Thread(target=qry_person_court_info_thd)
+    t1.setDaemon(True)
+    t2.setDaemon(True)
+    t1.start()
+    t2.start()
+    log.info('task finish now %s!',ctime())
